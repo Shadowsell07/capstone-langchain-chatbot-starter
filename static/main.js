@@ -1,4 +1,3 @@
-// Enhanced message sending functionality
 function sendMessage() {
     const messageInput = document.getElementById('message-input');
     const message = messageInput.value.trim();
@@ -72,7 +71,6 @@ function sendMessage() {
     messageInput.value = '';
 }
 
-// Message display function
 function displayMessage(sender, message) {
     const chatContainer = document.getElementById('chat-container');
     const messageDiv = document.createElement('div');
@@ -87,7 +85,7 @@ function displayMessage(sender, message) {
 
     // Format message with sender and timestamp
     messageDiv.innerHTML = `
-        <strong class="message-sender">${sender === 'assistant' ? 'ThinkBot' : 'You'}:</strong>
+        <strong class="message-sender">${sender === 'assistant' ? 'Cipher Bot' : 'You'}:</strong>
         <span class="message-content">${escapeHTML(message)}</span>
         <small class="message-timestamp">${new Date().toLocaleTimeString()}</small>
     `;

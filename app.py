@@ -26,8 +26,6 @@ def load_db():
         embeddings = CohereEmbeddings(cohere_api_key=os.getenv("COHERE_API_KEY"))
         vectordb = Chroma(persist_directory='db', embedding_function=embeddings)
         
-        print(f"Total documents in collection: {vectordb._collection.count()}")
-        
         qa = RetrievalQA.from_chain_type(
             llm=Cohere(cohere_api_key=os.getenv("COHERE_API_KEY")),
             chain_type="refine",
@@ -36,7 +34,6 @@ def load_db():
         )
         return qa
     except Exception as e:
-        print(f"Database Loading Error: {e}")
         return None
 
 # Load database on startup
@@ -48,17 +45,13 @@ def answer_from_knowledgebase(message):
         return "Knowledge base not loaded. Please check configuration."
     
     try:
-        print(f"Knowledge Base Query: {message}")
-        
         result = qa({"query": message})
         
-        print("Source Documents:")
-        for doc in result.get('source_documents', []):
-            print(f"- {doc.page_content[:200]}...")
+        if not result or 'result' not in result:
+            return "No answer found in the knowledge base."
         
         return result['result']
     except Exception as e:
-        print(f"Knowledge Base Answer Error: {e}")
         return f"Error retrieving answer: {e}"
 
 # Knowledge Base Search Function
@@ -75,32 +68,27 @@ def search_knowledgebase(message):
         
         return sources
     except Exception as e:
-        print(f"Knowledge Base Search Error: {e}")
         return f"Error searching knowledge base: {e}"
 
 # Chatbot Answer Function
 def answer_as_chatbot(message):
     try:
-        # Initialize Cohere LLM
         llm = Cohere(
             cohere_api_key=os.getenv("COHERE_API_KEY"),
             model="command"
         )
 
-        # Create conversation chain with memory
         conversation = ConversationChain(
             llm=llm, 
             memory=memory,
             verbose=True
         )
 
-        # Generate response
         response = conversation.predict(input=message)
         
         return response
 
     except Exception as e:
-        print(f"Chatbot error: {e}")
         return "I'm having trouble generating a response right now."
 
 # Route Handlers
@@ -119,11 +107,7 @@ def search():
 @app.route('/answer', methods=['POST'])
 def answer():
     message = request.json['message']
-    
-    # Generate a response
     response_message = answer_as_chatbot(message)
-    
-    # Return the response as JSON
     return jsonify({'message': response_message}), 200
 
 @app.route("/")
