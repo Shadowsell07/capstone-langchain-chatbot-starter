@@ -1,16 +1,32 @@
+// Enhanced message sending functionality
 function sendMessage() {
-    let messageInput = document.getElementById('message-input');
-    let message = messageInput.value;
-    displayMessage('user', message)
-    
-    // Get the selected function from the dropdown menu
-    let functionSelect = document.getElementById('function-select');
-    let selectedFunction = functionSelect.value;
-    
-    // Send an AJAX request to the Flask API endpoint based on the selected function
-    let xhr = new XMLHttpRequest();
-    let url;
+    const messageInput = document.getElementById('message-input');
+    const message = messageInput.value.trim();
+    const errorContainer = document.getElementById('error-container');
+    const loadingIndicator = document.getElementById('loading-indicator');
 
+    // Validate input
+    if (!message) {
+        errorContainer.textContent = 'Please enter a message.';
+        errorContainer.classList.remove('d-none');
+        return;
+    }
+
+    // Clear previous errors
+    errorContainer.classList.add('d-none');
+
+    // Display user message
+    displayMessage('user', message);
+
+    // Show loading indicator
+    loadingIndicator.classList.remove('d-none');
+
+    // Get selected function
+    const functionSelect = document.getElementById('function-select');
+    const selectedFunction = functionSelect.value;
+
+    // Determine API endpoint
+    let url;
     switch (selectedFunction) {
         case 'search':
             url = '/search';
@@ -19,64 +35,99 @@ function sendMessage() {
             url = '/kbanswer';
             break;
         case 'answer':
-            url = '/answer';
-            break;
         default:
             url = '/answer';
     }
-    
-    xhr.open('POST', url);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            let response = JSON.parse(xhr.responseText);
-            displayMessage('assistant', response.message);
+
+    // Send AJAX request
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: message })
+    })
+    .then(response => {
+        // Hide loading indicator
+        loadingIndicator.classList.add('d-none');
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
         }
-    };
-    xhr.send(JSON.stringify({message: message}));
-    
-    // Clear the input field
+        return response.json();
+    })
+    .then(data => {
+        // Display assistant's response
+        displayMessage('assistant', data.message);
+    })
+    .catch(error => {
+        // Handle errors
+        console.error('Error:', error);
+        errorContainer.textContent = 'Sorry, something went wrong. Please try again.';
+        errorContainer.classList.remove('d-none');
+        loadingIndicator.classList.add('d-none');
+    });
+
+    // Clear input field
     messageInput.value = '';
 }
 
+// Message display function
 function displayMessage(sender, message) {
-    let chatContainer = document.getElementById('chat-container');
-    let messageDiv = document.createElement('div');
+    const chatContainer = document.getElementById('chat-container');
+    const messageDiv = document.createElement('div');
 
-    if (sender === 'assistant') {
-        messageDiv.classList.add('assistant-message');
-        
-        // Create a span for the Chatbot text
-        let chatbotSpan = document.createElement('span');
-        chatbotSpan.innerHTML = "<b>Chatbot:</b> ";
-        messageDiv.appendChild(chatbotSpan);
-        
-        // Append the message to the Chatbot span
-        messageDiv.innerHTML += message;
-    } else {
-        messageDiv.classList.add('user-message');
+    // Add appropriate classes
+    messageDiv.classList.add(
+        'message', 
+        `message-${sender}`, 
+        'animate__animated', 
+        'animate__fadeIn'
+    );
 
-        let userSpan = document.createElement('span');
-        userSpan.innerHTML = "<b>User:</b> ";
-        messageDiv.appendChild(userSpan);
-        
-        // Append the message to the span
-        messageDiv.innerHTML += message;
-    }
+    // Format message with sender and timestamp
+    messageDiv.innerHTML = `
+        <strong class="message-sender">${sender === 'assistant' ? 'ThinkBot' : 'You'}:</strong>
+        <span class="message-content">${escapeHTML(message)}</span>
+        <small class="message-timestamp">${new Date().toLocaleTimeString()}</small>
+    `;
 
-    // Create a timestamp element
-    let timestamp = document.createElement('span');
-    timestamp.classList.add('timestamp');
-    let currentTime = new Date().toLocaleTimeString();
-    timestamp.innerText = " ["+ currentTime+"]";
-    messageDiv.appendChild(timestamp);
-
+    // Append message and scroll to bottom
     chatContainer.appendChild(messageDiv);
-
-    // Scroll to the bottom of the chat container
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// Handle button click event
-let sendButton = document.getElementById('send-btn');
-sendButton.addEventListener('click', sendMessage);
+// Utility function to prevent XSS
+function escapeHTML(str) {
+    return str.replace(/[&<>'"]/g, 
+        tag => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            "'": '&#39;',
+            '"': '&quot;'
+        }[tag] || tag));
+}
+
+// Clear chat history
+function clearChatHistory() {
+    const chatContainer = document.getElementById('chat-container');
+    chatContainer.innerHTML = '';
+}
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const sendButton = document.getElementById('send-btn');
+    const clearButton = document.getElementById('clear-btn');
+    const messageInput = document.getElementById('message-input');
+
+    sendButton.addEventListener('click', sendMessage);
+    clearButton.addEventListener('click', clearChatHistory);
+
+    // Enable send on Enter key
+    messageInput.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    });
+});
