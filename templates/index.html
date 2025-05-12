@@ -3,31 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cipher Bot: Your Intelligent Assistant</title>
+    <title>WU-BOT</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" type="text/css" href="static/style.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-image: url('/static/wu-tang-logo.jpg'); 
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        .container {
+            text-align: center;
+            padding: 50px;
+            color: #fff;
+        }
+
+        .wu-logo {
+            width: 50px;
+            height: auto;
+            vertical-align: middle;
+        }
+
+        h1 {
+            font-size: 3em;
+            color: #ffffff; /* White text color */
+            text-decoration: none; /* Remove underline or blue line */
+        }
+
+        .cipher-header {
+            position: relative;
+        }
+
+        .wu-logo-left {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            transform: translate(-50%, -50%);
+        }
+
+        .wu-logo-right {
+            position: absolute;
+            top: 50%;
+            right: 0;
+            transform: translate(50%, -50%);
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-5">
         <div class="cipher-header">
-            <h1 class="text-center mb-4">
-                Cipher Bot 
-                <span class="dollar-sign top-left">$</span>
-                <span class="dollar-sign top-right">$</span>
-                <span class="dollar-sign bottom-left">$</span>
-                <span class="dollar-sign bottom-right">$</span>
-            </h1>
+            <h1 class="text-center mb-4">Welcome to WU-BOT</h1>
         </div>
+        
+        <p>Ask me anything, and I'll respond with the wisdom of the Wu-Tang Clan!</p>
         
         <!-- Error Alert (Hidden by default) -->
         <div id="error-container" class="alert alert-danger d-none" role="alert"></div>
         
         <!-- Loading Indicator (Hidden by default) -->
         <div id="loading-indicator" class="text-center d-none">
-            <div class="spinner-border text-primary" role="status">
-                <span class="sr-only">Loading...</span>
-            </div>
+            <img src="/static/wu-logo.png" alt="Loading..." class="wu-spinner">
         </div>
         
         <!-- Chat Container -->

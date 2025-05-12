@@ -85,7 +85,7 @@ function displayMessage(sender, message) {
 
     // Format message with sender and timestamp
     messageDiv.innerHTML = `
-        <strong class="message-sender">${sender === 'assistant' ? 'Cipher Bot' : 'You'}:</strong>
+        <strong class="message-sender">${sender === 'assistant' ? 'Wu-Bot' : 'You'}:</strong>
         <span class="message-content">${escapeHTML(message)}</span>
         <small class="message-timestamp">${new Date().toLocaleTimeString()}</small>
     `;
