@@ -26,32 +26,30 @@ def load_db():
         print("Starting database load...")
         embeddings = CohereEmbeddings(cohere_api_key=os.getenv("COHERE_API_KEY"))
         
-        # Update path to match your database location
-        vectordb = Chroma(persist_directory='db/index', embedding_function=embeddings)
-        
-        # Check the number of documents
-        doc_count = vectordb._collection.count()
-        print(f"Total documents in collection: {doc_count}")
-        
-        if doc_count == 0:
-            print("Warning: The vector database is empty.")
+        # Verify database files exist
+        if not (os.path.exists('db/chroma-collections.parquet') and 
+                os.path.exists('db/chroma-embeddings.parquet')):
+            print("Error: Required database files not found!")
             return None
             
-        print("Initializing RetrievalQA chain...")
+        vectordb = Chroma(persist_directory='db', embedding_function=embeddings)
+        
+        # Verify document count
+        doc_count = vectordb._collection.count()
+        print(f"Found {doc_count} documents in database")
+        
         qa = RetrievalQA.from_chain_type(
             llm=Cohere(cohere_api_key=os.getenv("COHERE_API_KEY")),
             chain_type="refine",
             retriever=vectordb.as_retriever(),
-            return_source_documents=True,
-            verbose=True  # Enable verbose mode for debugging
+            return_source_documents=True
         )
-        print("RetrievalQA chain initialized successfully")
+        print("Database loaded successfully!")
         return qa
-        
     except Exception as e:
-        print(f"Database Loading Error: {e}")
+        print(f"Error loading database: {e}")
         import traceback
-        print(f"Full traceback: {traceback.format_exc()}")
+        print(f"Traceback: {traceback.format_exc()}")
         return None
 
 # Load database on startup
@@ -64,27 +62,21 @@ def answer_from_knowledgebase(message):
         return "Knowledge base not loaded. Please check configuration."
     
     try:
-        print(f"Querying knowledge base with: {message}")
-        result = qa({"query": message})
-        print(f"Raw result: {result}")  # Debug print
+        # First check if we can get any documents
+        docs = qa.retriever.get_relevant_documents(message)
+        print(f"Found {len(docs)} relevant documents")
         
-        if not result:
-            return "No result returned from knowledge base."
+        if not docs:
+            return "No relevant information found in the knowledge base."
+        
+        # Now try to get the answer
+        res = qa({"query": message})
+        if not res or 'result' not in res:
+            return "Could not generate an answer from the knowledge base."
             
-        if isinstance(result, dict):
-            if 'result' in result:
-                return result['result']
-            else:
-                print(f"Available keys in result: {result.keys()}")
-                return "Result format unexpected. Check logs for details."
-        else:
-            print(f"Unexpected result type: {type(result)}")
-            return "Unexpected response format from knowledge base."
-            
+        return res['result']
     except Exception as e:
-        print(f"Error details: {str(e)}")
-        import traceback
-        print(f"Full traceback: {traceback.format_exc()}")
+        print(f"Error in answer_from_knowledgebase: {str(e)}")
         return f"Error retrieving answer: {str(e)}"
 
 # Knowledge Base Search Function
@@ -93,14 +85,21 @@ def search_knowledgebase(message):
         return "Knowledge base not loaded. Please check configuration."
     
     try:
-        result = qa({"query": message})
+        # Get relevant documents
+        docs = qa.retriever.get_relevant_documents(message)
+        print(f"Search found {len(docs)} documents")
         
-        sources = ""
-        for count, doc in enumerate(result.get('source_documents', []), 1):
-            sources += f"Source {count}:\n{doc.page_content}\n\n"
+        if not docs:
+            return "No relevant information found in the knowledge base."
         
-        return sources
+        # Format the response
+        sources = []
+        for i, doc in enumerate(docs, 1):
+            sources.append(f"Source {i}:\n{doc.page_content}\n")
+        
+        return "\n".join(sources)
     except Exception as e:
+        print(f"Search error: {e}")
         return f"Error searching knowledge base: {e}"
 
 # Chatbot Answer Function
@@ -142,6 +141,67 @@ def answer():
     message = request.json['message']
     response_message = answer_as_chatbot(message)
     return jsonify({'message': response_message}), 200
+
+@app.route('/test-db', methods=['GET'])
+def test_db():
+    try:
+        embeddings = CohereEmbeddings(cohere_api_key=os.getenv("COHERE_API_KEY"))
+        vectordb = Chroma(persist_directory='db', embedding_function=embeddings)
+        count = vectordb._collection.count()
+        return jsonify({
+            'status': 'success',
+            'document_count': count
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        })
+
+@app.route('/verify-db', methods=['GET'])
+def verify_db():
+    try:
+        if not qa:
+            return jsonify({
+                'status': 'error',
+                'message': 'QA system not initialized'
+            })
+        
+        # Test retrieval
+        test_docs = qa.retriever.get_relevant_documents("python")
+        
+        return jsonify({
+            'status': 'success',
+            'document_count': len(test_docs),
+            'sample_content': test_docs[0].page_content[:200] if test_docs else None
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        })
+
+@app.route('/dbstatus')
+def db_status():
+    if not qa:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database not loaded'
+        })
+    
+    try:
+        # Test the retriever
+        test_docs = qa.retriever.get_relevant_documents("test query")
+        return jsonify({
+            'status': 'success',
+            'documents_found': len(test_docs),
+            'sample_query': "test query"
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        })
 
 @app.route("/")
 def index():
