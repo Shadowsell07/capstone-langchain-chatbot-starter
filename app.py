@@ -67,40 +67,36 @@ def answer_from_knowledgebase(message):
         print(f"Found {len(docs)} relevant documents")
         
         if not docs:
-            return "No relevant information found in the knowledge base."
+            return "I don't have any information about that in my knowledge base. Try asking about Wu-Tang Clan or use the regular chatbot mode for general questions."
         
-        # Now try to get the answer
+        # If we have documents, get the answer
         res = qa({"query": message})
-        if not res or 'result' not in res:
-            return "Could not generate an answer from the knowledge base."
+        
+        if not res or 'result' not in res or not res['result'].strip():
+            return "I found some related information but couldn't generate a specific answer. Try rephrasing your question or use the regular chatbot mode."
             
         return res['result']
     except Exception as e:
         print(f"Error in answer_from_knowledgebase: {str(e)}")
-        return f"Error retrieving answer: {str(e)}"
+        return "I encountered an error while searching the knowledge base. Try using the regular chatbot mode instead."
 
 # Knowledge Base Search Function
 def search_knowledgebase(message):
     if not qa:
+        print("QA system not initialized")
         return "Knowledge base not loaded. Please check configuration."
     
     try:
-        # Get relevant documents
-        docs = qa.retriever.get_relevant_documents(message)
-        print(f"Search found {len(docs)} documents")
+        # Use the RetrievalQA chain directly like in answer_from_knowledgebase
+        res = qa({"query": message})
         
-        if not docs:
-            return "No relevant information found in the knowledge base."
-        
-        # Format the response
-        sources = []
-        for i, doc in enumerate(docs, 1):
-            sources.append(f"Source {i}:\n{doc.page_content}\n")
-        
-        return "\n".join(sources)
+        if not res or 'result' not in res or not res['result'].strip():
+            return "I found some related information but couldn't generate a specific answer. Try rephrasing your question or use the regular chatbot mode."
+            
+        return res['result']
     except Exception as e:
-        print(f"Search error: {e}")
-        return f"Error searching knowledge base: {e}"
+        print(f"Search error: {str(e)}")
+        return "I encountered an error while searching the knowledge base. Try using the regular chatbot mode instead."
 
 # Chatbot Answer Function
 def answer_as_chatbot(message):
