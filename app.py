@@ -23,17 +23,35 @@ memory = ConversationBufferMemory()
 # Database Loading Function
 def load_db():
     try:
+        print("Starting database load...")
         embeddings = CohereEmbeddings(cohere_api_key=os.getenv("COHERE_API_KEY"))
-        vectordb = Chroma(persist_directory='db', embedding_function=embeddings)
         
+        # Update path to match your database location
+        vectordb = Chroma(persist_directory='db/index', embedding_function=embeddings)
+        
+        # Check the number of documents
+        doc_count = vectordb._collection.count()
+        print(f"Total documents in collection: {doc_count}")
+        
+        if doc_count == 0:
+            print("Warning: The vector database is empty.")
+            return None
+            
+        print("Initializing RetrievalQA chain...")
         qa = RetrievalQA.from_chain_type(
             llm=Cohere(cohere_api_key=os.getenv("COHERE_API_KEY")),
             chain_type="refine",
             retriever=vectordb.as_retriever(),
-            return_source_documents=True
+            return_source_documents=True,
+            verbose=True  # Enable verbose mode for debugging
         )
+        print("RetrievalQA chain initialized successfully")
         return qa
+        
     except Exception as e:
+        print(f"Database Loading Error: {e}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
         return None
 
 # Load database on startup
@@ -42,17 +60,32 @@ qa = load_db()
 # Knowledge Base Answer Function
 def answer_from_knowledgebase(message):
     if not qa:
+        print("QA system not initialized")
         return "Knowledge base not loaded. Please check configuration."
     
     try:
+        print(f"Querying knowledge base with: {message}")
         result = qa({"query": message})
+        print(f"Raw result: {result}")  # Debug print
         
-        if not result or 'result' not in result:
-            return "No answer found in the knowledge base."
-        
-        return result['result']
+        if not result:
+            return "No result returned from knowledge base."
+            
+        if isinstance(result, dict):
+            if 'result' in result:
+                return result['result']
+            else:
+                print(f"Available keys in result: {result.keys()}")
+                return "Result format unexpected. Check logs for details."
+        else:
+            print(f"Unexpected result type: {type(result)}")
+            return "Unexpected response format from knowledge base."
+            
     except Exception as e:
-        return f"Error retrieving answer: {e}"
+        print(f"Error details: {str(e)}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
+        return f"Error retrieving answer: {str(e)}"
 
 # Knowledge Base Search Function
 def search_knowledgebase(message):
